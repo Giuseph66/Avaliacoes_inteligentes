@@ -134,13 +134,20 @@ export default function AlunoHome() {
         style={[styles.primaryButton, { backgroundColor: theme.dark ? '#4a90e2' : '#0a7ea4' }]} 
         onPress={() => router.push('/aluno/entrar-sala')}
       >
-        <Ionicons name="enter-outline" size={24} color="#fff" />
-        <ThemedText style={styles.primaryButtonText}>
-          Entrar em Sala de Prova
-        </ThemedText>
-        <ThemedText style={styles.primaryButtonSubtext}>
-          Escaneie o QR Code ou digite o código da sala
-        </ThemedText>
+        <ThemedView style={[styles.primaryButtonContent,  { backgroundColor: theme.dark ? '#4a90e2' : '#0a7ea4' }]}>
+          <ThemedView style={styles.primaryButtonIcon}>
+            <Ionicons name="enter-outline" size={28} color="#fff" />
+          </ThemedView>
+          <ThemedView style={[styles.primaryButtonTexts, { backgroundColor: theme.dark ? '#4a90e2' : '#0a7ea4' }]}>
+            <ThemedText style={[styles.primaryButtonText,  { backgroundColor: theme.dark ? '#4a90e2' : '#0a7ea4' }]}>
+              Entrar em Sala de Prova
+            </ThemedText>
+            <ThemedText style={[styles.primaryButtonSubtext,  { backgroundColor: theme.dark ? '#4a90e2' : '#0a7ea4' }]}>
+              Escaneie o QR Code ou digite o código da sala
+            </ThemedText>
+          </ThemedView>
+          <Ionicons name="chevron-forward" size={24} color="rgba(255,255,255,0.7)" />
+        </ThemedView>
       </Pressable>
 
       {/* Estatísticas */}
@@ -275,20 +282,42 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 20,
-    borderRadius: 12,
+    borderRadius: 16,
+    marginHorizontal: 16,
     marginBottom: 24,
-    gap: 12,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+  },
+  primaryButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flex: 1,
+  },
+  primaryButtonIcon: {
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: 10,
+    padding: 10,
+    marginRight: 12,
+  },
+  primaryButtonTexts: {
+    flex: 1,
   },
   primaryButtonText: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 15,
-    flex: 1,
   },
   primaryButtonSubtext: {
     color: 'rgba(255,255,255,0.8)',
     fontSize: 12,
-    marginTop: 4,
+    marginTop: 2,
   },
   statsContainer: {
     padding: 16,

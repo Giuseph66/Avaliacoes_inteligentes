@@ -10,6 +10,7 @@ import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GestureHandlerRootView, PanGestureHandler } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const professorItems = [
   { icon: 'school-outline', route: '/professor', label: 'Professor - Início' },
@@ -23,6 +24,8 @@ const alunoItems = [
   { icon: 'time-outline', route: '/aluno/historico', label: 'Histórico' },
   { icon: 'person-circle-outline', route: '/aluno/perfil', label: 'Perfil' },
   { icon: 'scan-outline', route: '/aluno/entrar-sala', label: 'Entrar na Sala' },
+  { icon: 'document-text-outline', route: '/aluno/estudar-ia', label: 'Estudar com IA' },
+  { icon: 'book-outline', route: '/aluno/livro-estudo', label: 'Livros de Estudo' },
 ];
 
 const infoItems = [
@@ -35,9 +38,9 @@ export default function RootLayout() {
   const [loaded] = useFonts({
     SpaceMono: require('../assets/fonts/SpaceMono-Regular.ttf'),
   });
-  const [sidebarMode, setSidebarMode] = useState<'hidden' | 'collapsed' | 'expanded'>('collapsed');
+  const [sidebarMode, setSidebarMode] = useState<'hidden' | 'collapsed' | 'expanded'>('hidden');
   const pathname = usePathname();
-
+  const insets = useSafeAreaInsets();
   const currentItems = pathname.startsWith('/professor')
     ? professorItems
     : pathname.startsWith('/aluno')
@@ -82,67 +85,140 @@ export default function RootLayout() {
           <View style={[styles.container, { backgroundColor: theme.background }]}>
             {/* Sidebar - não mostrar na tela de prova segura do aluno */}
             {sidebarMode !== 'hidden' && !hideSidebar && (
-              <View style={[
-                styles.sidebar,
-                { backgroundColor: theme.background, borderRightColor: colorScheme === 'dark' ? '#2B2B2B' : '#E9ECEF' },
-                sidebarMode === 'expanded' && styles.sidebarExpanded
-              ]}>
-                {/* Botão de alternância */}
-                <View style={{flexDirection:'row', gap:12, alignItems:'center',justifyContent:'center',width:'100%'}}>
-                <TouchableOpacity
-                  style={[styles.toggleButton, { backgroundColor: colorScheme === 'dark' ? '#2B2B2B' : '#F0F4FF' }]}
-                  onPress={() => {
-                    setSidebarMode(
-                      sidebarMode === 'collapsed'
-                        ? 'expanded'
-                        : sidebarMode === 'expanded'
-                        ? 'hidden'
-                        : 'collapsed'
-                    );
-                  }}
-                >
-                  <Ionicons name={sidebarMode === 'expanded' ? 'chevron-back' : 'menu'} size={24} color={theme.tint} />
-                </TouchableOpacity>
-                </View>
-                {/* Itens do menu */}
-                {currentItems.map((item) => (
-                  <TouchableOpacity
-                    key={item.route}
+              <>
+                {/* Quando expandido, sobrepor o conteúdo */}
+                {sidebarMode === 'expanded' && (
+                  <View
                     style={[
-                      styles.sidebarButton,
-                      sidebarMode === 'expanded' && styles.sidebarButtonExpanded
+                      styles.sidebar,
+                      styles.sidebarExpanded,
+                      {
+                        backgroundColor: theme.background,
+                        borderRightColor: colorScheme === 'dark' ? '#2B2B2B' : '#E9ECEF',
+                        position: 'absolute',
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        zIndex: 100,
+                        elevation: 10,
+                        shadowColor: '#000',
+                        shadowOffset: { width: 2, height: 0 },
+                        shadowOpacity: 0.15,
+                        shadowRadius: 8,
+                      },
                     ]}
-                    onPress={() => {
-                      setSidebarMode('hidden');
-                      router.push(item.route as any);
-                    }}
                   >
-                    <Ionicons name={item.icon as any} size={28} color={theme.tint} />
-                    {sidebarMode === 'expanded' && (
-                      <Text style={[styles.sidebarLabel, { color: theme.text }]}>{item.label}</Text>
-                    )}
-                  </TouchableOpacity>
-                ))}
-                {/* Botão fixo de Sair */}
-                <TouchableOpacity
-                  style={[
-                    styles.sidebarButton,
-                    styles.supportButton,
-                    sidebarMode === 'expanded' && styles.sidebarButtonExpanded
-                  ]}
-                  onPress={() => {
-                    AsyncStorage.removeItem('usuarioLogado');
-                    router.push('/login' as any);
-                    setSidebarMode('hidden');
-                  }}
-                >
-                  <Ionicons name="log-out-outline" size={28} color={theme.tint} />
-                  {sidebarMode === 'expanded' && (
-                    <Text style={[styles.sidebarLabel, { color: theme.text }]}>Sair</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
+                    {/* Botão de alternância */}
+                    <View style={{flexDirection:'row', gap:12, alignItems:'center',justifyContent:'center',width:'100%'}}>
+                      <TouchableOpacity
+                        style={[styles.toggleButton, { backgroundColor: colorScheme === 'dark' ? '#2B2B2B' : '#F0F4FF' }]}
+                        onPress={() => {
+                          setSidebarMode(
+                            sidebarMode === 'collapsed'
+                              ? 'expanded'
+                              : sidebarMode === 'expanded'
+                              ? 'hidden'
+                              : 'collapsed'
+                          );
+                        }}
+                      >
+                        <Ionicons name={sidebarMode === 'expanded' ? 'chevron-back' : 'menu'} size={24} color={theme.tint} />
+                      </TouchableOpacity>
+                    </View>
+                    {/* Itens do menu */}
+                    {currentItems.map((item) => (
+                      <TouchableOpacity
+                        key={item.route}
+                        style={[
+                          styles.sidebarButton,
+                          styles.sidebarButtonExpanded
+                        ]}
+                        onPress={() => {
+                          setSidebarMode('hidden');
+                          router.push(item.route as any);
+                        }}
+                      >
+                        <Ionicons name={item.icon as any} size={28} color={theme.tint} />
+                        <Text style={[styles.sidebarLabel, { color: theme.text }]}>{item.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                    {/* Botão fixo de Sair */}
+                    <TouchableOpacity
+                      style={[
+                        styles.sidebarButton,
+                        styles.supportButton,
+                        styles.sidebarButtonExpanded,
+                        { marginBottom: insets.bottom }
+                      ]}
+                      onPress={() => {
+                        AsyncStorage.removeItem('usuarioLogado');
+                        router.push('/login' as any);
+                        setSidebarMode('hidden');
+                      }}
+                    >
+                      <Ionicons name="log-out-outline" size={28} color={theme.tint} />
+                      <Text style={[styles.sidebarLabel, { color: theme.text }]}>Sair</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                {/* Quando colapsado, sidebar normal (ajusta o conteúdo) */}
+                {sidebarMode === 'collapsed' && (
+                  <View style={[
+                    styles.sidebar,
+                    { backgroundColor: theme.background, borderRightColor: colorScheme === 'dark' ? '#2B2B2B' : '#E9ECEF' }
+                  ]}>
+                    {/* Botão de alternância */}
+                    <View style={{flexDirection:'row', gap:12, alignItems:'center',justifyContent:'center',width:'100%'}}>
+                      <TouchableOpacity
+                        style={[styles.toggleButton, { backgroundColor: colorScheme === 'dark' ? '#2B2B2B' : '#F0F4FF' }]}
+                        onPress={() => {
+                          setSidebarMode(
+                            sidebarMode === 'collapsed'
+                              ? 'expanded'
+                              : sidebarMode === 'expanded'
+                              ? 'hidden'
+                              : 'collapsed'
+                          );
+                        }}
+                      >
+                        <Ionicons name={'menu'} size={24} color={theme.tint} />
+                      </TouchableOpacity>
+                    </View>
+                    {/* Itens do menu */}
+                    {currentItems.map((item) => (
+                      <TouchableOpacity
+                        key={item.route}
+                        style={[
+                          styles.sidebarButton
+                        ]}
+                        onPress={() => {
+                          setSidebarMode('hidden');
+                          router.push(item.route as any);
+                        }}
+                      >
+                        <Ionicons name={item.icon as any} size={28} color={theme.tint} />
+                      </TouchableOpacity>
+                    ))}
+                    {/* Botão fixo de Sair */}
+                    <TouchableOpacity
+                      style={[
+                        styles.sidebarButton,
+                        styles.supportButton,
+                        { marginBottom: insets.bottom }
+                      ]}
+                      onPress={() => {
+                        AsyncStorage.removeItem('usuarioLogado');
+                        router.push('/login' as any);
+                        setSidebarMode('hidden');
+                      }}
+                    >
+                      <Ionicons name="log-out-outline" size={28} color={theme.tint} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </>
             )}
+
             {/* Conteúdo principal */}
             <View style={styles.content}>
               <Stack screenOptions={{ headerShown: false }}>
@@ -153,6 +229,13 @@ export default function RootLayout() {
                 <Stack.Screen name="professor/relatorios" options={{ headerShown: false }} />
                 <Stack.Screen name="aluno/index" options={{ headerShown: false }} />
                 <Stack.Screen name="aluno/historico" options={{ headerShown: false }} />
+                <Stack.Screen name="aluno/pdf-viewer" options={{ headerShown: false }} />
+                <Stack.Screen name="aluno/estudar-ia" options={{ headerShown: false }} />
+                <Stack.Screen name="aluno/livro-estudo" options={{ headerShown: false }} />
+                <Stack.Screen name="aluno/cadas_livros" options={{ headerShown: false }} />
+                <Stack.Screen name="aluno/entrar-sala" options={{ headerShown: false }} />
+                <Stack.Screen name="aluno/sala-espera" options={{ headerShown: false }} />
+                <Stack.Screen name="aluno/prova-segura" options={{ headerShown: false }} />
                 <Stack.Screen name="professor/perfil" options={{ headerShown: false }} />
                 <Stack.Screen name="aluno/perfil" options={{ headerShown: false }} />
                 <Stack.Screen name="telas-extras/info" options={{ headerShown: false }} />
@@ -182,6 +265,7 @@ const styles = StyleSheet.create({
     paddingTop: 32,
     paddingBottom: 16,
     gap: 12,
+    zIndex: 10,
   },
   sidebarExpanded: {
     width: 200,

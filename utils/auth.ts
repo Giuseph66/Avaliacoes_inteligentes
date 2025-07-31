@@ -4,7 +4,8 @@ import { firestore } from './firebaseConfig';
 
 export async function cadastrarUsuario({ nome, email, senha, role }: { nome: string, email: string, senha: string, role: 'professor' | 'aluno' }) {
   // Verifica se já existe usuário com o mesmo email
-  const q = query(collection(firestore, 'usuarios'), where('email', '==', email));
+  email = email.toLowerCase();
+  const q = query(collection(firestore, 'usuarios'), where('email', '==', email.toLowerCase()));
   const querySnapshot = await getDocs(q);
   if (!querySnapshot.empty) {
     throw new Error('Já existe um usuário com este e-mail.');
@@ -12,7 +13,7 @@ export async function cadastrarUsuario({ nome, email, senha, role }: { nome: str
   // Adiciona novo usuário
   await addDoc(collection(firestore, 'usuarios'), {
     nome,
-    email,
+    email: email.toLowerCase(),
     senha,
     role,
     criadoEm: new Date()
@@ -20,6 +21,7 @@ export async function cadastrarUsuario({ nome, email, senha, role }: { nome: str
 }
 
 export async function loginUsuario({ email, senha }: { email: string, senha: string }) {
+  email = email.toLowerCase();
   const q = query(collection(firestore, 'usuarios'), where('email', '==', email), where('senha', '==', senha));
   const querySnapshot = await getDocs(q);
   if (querySnapshot.empty) {

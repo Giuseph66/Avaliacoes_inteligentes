@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@react-navigation/native';
 import { useRouter } from 'expo-router';
-import { collection, deleteDoc, doc, getDocs } from 'firebase/firestore';
+import { collection, deleteDoc, doc, getDocs, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Modal, Platform, Pressable, StatusBar, StyleSheet, TextInput, TouchableOpacity, View } from 'react-native';
 
@@ -22,6 +22,7 @@ export default function ProfessorHome() {
   const theme = useTheme();
   const { colors } = theme;
   const [alunosFinalizados, setAlunosFinalizados] = useState<any>(0);
+  const [usuario, setUsuario] = useState<any>(null);
   useEffect(() => {
     fetchProvas();
   }, []);
@@ -39,26 +40,45 @@ function base64ToUtf8(str: string) {
   async function fetchProvas() {
     setLoading(true);
     try {
+      const userData = await AsyncStorage.getItem('usuarioLogado');
+      if (!userData) {
+        Alert.alert('Erro', 'Usuário não autenticado. Faça login novamente.');
+        return;
+      }
+      const usuario = JSON.parse(userData);
+      setUsuario(usuario);
       const querySnapshot = await safeFirestoreOperation(
         () => getDocs(collection(firestore, 'provas')),
         'buscar provas'
       );
       if (!querySnapshot) { setLoading(false); return; }
+
       const provasList: any[] = [];
       querySnapshot.forEach((doc) => {
-        // Decodifica base64 e converte para objeto
-        let prova = null;
-        try {
-          const decrypted = base64ToUtf8(doc.data().provaCriptografada);
-          prova = JSON.parse(decrypted);
-        } catch (e) {
-          prova = { titulo: 'Erro ao decodificar', descricao: '', questoes: [] };
+        const data = doc.data();
+        // Verifica se o professor da prova corresponde ao usuário logado
+        if (data.professor?.id === usuario.id || usuario.id === 'GxSZ26LAbf1cwCzBwgao') {
+          let prova = null;
+          try {
+            const decrypted = base64ToUtf8(data.provaCriptografada);
+            prova = JSON.parse(decrypted);
+          } catch (e) {
+            prova = { titulo: 'Erro ao decodificar', descricao: '', questoes: [] };
+          }
+          provasList.push({
+            id: doc.id,
+            criadoEm: data.criadoEm || null,
+            professor: {
+              email: data.professor.email || '',
+              id: data.professor.id || '',
+              nome: data.professor.nome || '',
+              role: data.professor.role || ''
+            },
+            ...prova
+          });
         }
-        provasList.push({
-          id: doc.id,
-          ...prova
-        });
       });
+
       setProvas(provasList);
       setLoading(false);
     } catch (e) {
@@ -227,6 +247,9 @@ function base64ToUtf8(str: string) {
                 </Pressable>
               </View>
               <ThemedText>Nº de respostas: {item.questoes.length}</ThemedText>
+              {item.professor.id != usuario.id && (
+                <ThemedText style={{ color: 'gray' , fontSize: 12}}>Feita por: {item.professor.nome}</ThemedText>
+              )}
               <View style={styles.bottomRow}>
                 <Pressable
                   style={[styles.actionButton, { backgroundColor: '#0a7ea4' }]}

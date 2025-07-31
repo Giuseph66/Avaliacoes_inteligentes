@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
-import React, { useState } from 'react';
-import { Alert, FlatList, Pressable, ScrollView, StatusBar, StyleSheet, TextInput } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { Alert, Animated, Easing, FlatList, Pressable, ScrollView, StatusBar, StyleSheet, TextInput } from 'react-native';
 
 import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
@@ -9,11 +9,43 @@ import { GeracaoIA, Questao } from '@/types/avaliacao';
 import { gerarQuestoesIA } from '@/utils/ia';
 import { useProvaStore } from '@/utils/provaStore';
 import { useTheme } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function GerarQuestoesIA() {
   const router = useRouter();
   const theme = useTheme();
   const [isGenerating, setIsGenerating] = useState(false);
+  // Animated value para rotação do ícone
+  const spinAnim = useRef(new Animated.Value(0)).current;
+
+  // Inicia ou para a animação de rotação quando `isGenerating` mudar
+  useEffect(() => {
+    let animationLoop: Animated.CompositeAnimation | undefined;
+
+    if (isGenerating) {
+      // Reinicia valor antes de começar
+      spinAnim.setValue(0);
+
+      animationLoop = Animated.loop(
+        Animated.timing(spinAnim, {
+          toValue: 1,
+          duration: 1000,
+          easing: Easing.linear,
+          useNativeDriver: true,
+        })
+      );
+      animationLoop.start();
+    } else {
+      // Para a animação e reseta valor
+      spinAnim.stopAnimation();
+      spinAnim.setValue(0);
+    }
+
+    // Cleanup no unmount ou quando `isGenerating` muda
+    return () => {
+      if (animationLoop) animationLoop.stop();
+    };
+  }, [isGenerating, spinAnim]);
   const [questoesGeradas, setQuestoesGeradas] = useState<Questao[]>([]);
   
   // Configuração da geração
@@ -27,7 +59,12 @@ export default function GerarQuestoesIA() {
   });
 
   // Usar o store global
-  const { addQuestao } = useProvaStore();
+  const { materia: materiaStore, tema: temaStore, setMateria, setTema, addQuestao } = useProvaStore();
+  useEffect(() => {
+    if (materiaStore && temaStore) {
+      setConfiguracao(prev => ({ ...prev, materia: materiaStore, tema: temaStore }));
+    }
+  }, [materiaStore, temaStore]);
 
   async function gerarQuestoesIAHandler() {
     if (!configuracao.materia.trim() || !configuracao.tema.trim()) {
@@ -37,9 +74,12 @@ export default function GerarQuestoesIA() {
 
     setIsGenerating(true);
     try {
-      // Substitua pela sua chave real da API do Google
-      const key_google = 'AIzaSyD8AUUxeuO9Df465lJmy0oBvvg7rRtlenA'; // TODO: Adicionar chave real
-      
+      const key_google = await AsyncStorage.getItem('key_google') || '';
+      console.log(key_google);
+      if (!key_google) {
+        Alert.alert('Aviso', 'Não foi possível obter a chave da IA. Por favor, verifique se a chave está configurada corretamente.');
+        return;
+      }
       const questoesIA = await gerarQuestoesIA(
         configuracao.materia,
         configuracao.tema,
@@ -69,42 +109,7 @@ export default function GerarQuestoesIA() {
 
     } catch (error) {
       console.error('Erro ao gerar questões:', error);
-      
-      // Fallback para dados simulados em caso de erro
-      Alert.alert(
-        'Erro na IA', 
-        'Não foi possível conectar com a IA. Usando dados simulados para demonstração.',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              const questoesSimuladas: Questao[] = [
-                {
-                  id: Date.now().toString(),
-                  texto: `Questão gerada sobre ${configuracao.tema} em ${configuracao.materia}`,
-                  tipo: 'objetiva',
-                  dificuldade: configuracao.nivel,
-                  alternativas: [
-                    { id: '1', texto: 'Alternativa A', correta: true },
-                    { id: '2', texto: 'Alternativa B', correta: false },
-                    { id: '3', texto: 'Alternativa C', correta: false },
-                    { id: '4', texto: 'Alternativa D', correta: false }
-                  ]
-                },
-                {
-                  id: (Date.now() + 1).toString(),
-                  texto: `Questão discursiva sobre ${configuracao.tema}`,
-                  tipo: 'discursiva',
-                  dificuldade: configuracao.nivel,
-                  alternativas: [],
-                  respostaCorreta: 'Resposta esperada para esta questão discursiva.'
-                }
-              ];
-              setQuestoesGeradas(questoesSimuladas);
-            }
-          }
-        ]
-      );
+      Alert.alert('Erro', 'Erro ao gerar questões, tente novamente mais tarde');
     } finally {
       setIsGenerating(false);
     }
@@ -154,20 +159,36 @@ export default function GerarQuestoesIA() {
           ]}>
             Configuração da Geração
           </ThemedText>
-
+          <ThemedText style={[
+            styles.label,
+            { color: theme.colors.text}
+          ]}>
+            Matéria
+          </ThemedText>
           <TextInput
             placeholder="Matéria (ex: Matemática, História, Português)"
             placeholderTextColor="#888"
             value={configuracao.materia}
-            onChangeText={(text) => setConfiguracao(prev => ({ ...prev, materia: text }))}
+            onChangeText={(text) => {
+              setConfiguracao(prev => ({ ...prev, materia: text }));
+              setMateria(text);
+            }}
             style={[styles.input, { color: theme.colors.text }]}
           />
-
+          <ThemedText style={[
+            styles.label,
+            { color: theme.colors.text}
+          ]}>
+            Tema específico
+          </ThemedText>
           <TextInput
             placeholder="Tema específico (ex: Equações do 1º grau, Revolução Industrial)"
             placeholderTextColor="#888"
             value={configuracao.tema}
-            onChangeText={(text) => setConfiguracao(prev => ({ ...prev, tema: text }))}
+            onChangeText={(text) => {
+              setConfiguracao(prev => ({ ...prev, tema: text }));
+              setTema(text);
+            }}
             style={[styles.input, { color: theme.colors.text }]}
           />
 
@@ -192,15 +213,21 @@ export default function GerarQuestoesIA() {
             ))}
           </ThemedView>
 
-          <ThemedText style={[styles.label, { color: theme.colors.text }]}>Quantidade de Questões</ThemedText>
+          <ThemedText style={[styles.label, { color: theme.colors.text }]}>Quantidade de Questões (1 a 10)</ThemedText>
           <TextInput
             placeholder="5"
             placeholderTextColor="#888"
             value={configuracao.quantidade.toString()}
             onChangeText={(text) => {
               const num = parseInt(text);
-              if (!isNaN(num) && Number.isInteger(num) && num > 0) {
+              if (!isNaN(num) && Number.isInteger(num) && num > 0 && num <= 10) {
                 setConfiguracao(prev => ({ ...prev, quantidade: text }));
+              } else if (!isNaN(num) && num < 1) {
+                Alert.alert('Aviso', 'O mínimo é 1 questão por vez.');
+                setConfiguracao(prev => ({ ...prev, quantidade: '1' }));
+              } else if (!isNaN(num) && num > 10) {
+                Alert.alert('Aviso', 'O máximo é 10 questões por vez. Para gerar mais questões, repita o processo.');
+                setConfiguracao(prev => ({ ...prev, quantidade: '10' }));
               } else {
                 setConfiguracao(prev => ({ ...prev, quantidade: '' }));
               }
@@ -238,7 +265,6 @@ export default function GerarQuestoesIA() {
             style={[styles.input, { height: 80, color: theme.colors.text }]}
             multiline
           />
-
           <Pressable
             style={[
               styles.generateButton,
@@ -248,11 +274,24 @@ export default function GerarQuestoesIA() {
             onPress={gerarQuestoesIAHandler}
             disabled={isGenerating}
           >
-            <Ionicons 
-              name={isGenerating ? "hourglass" : "sparkles"} 
-              size={24} 
-              color="#fff" 
-            />
+            <Animated.View
+              style={{
+                transform: [{
+                  rotate: isGenerating
+                    ? spinAnim.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: ['0deg', '360deg'],
+                      })
+                    : '0deg',
+                }]
+              }}
+            >
+              <Ionicons 
+                name={isGenerating ? "hourglass" : "sparkles"} 
+                size={24} 
+                color="#fff"
+              />
+            </Animated.View>
             <ThemedText style={styles.generateButtonText}>
               {isGenerating ? 'Gerando Questões...' : 'Gerar Questões com IA'}
             </ThemedText>
@@ -394,7 +433,7 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 16,
     fontWeight: '500',
-    marginBottom: 8,
+    marginBottom: 0,
   },
   optionsContainer: {
     flexDirection: 'row',

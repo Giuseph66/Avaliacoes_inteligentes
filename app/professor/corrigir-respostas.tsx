@@ -4,6 +4,7 @@ import { firestore } from '@/utils/firebaseConfig';
 import { safeFirestoreOperation, safeFirestoreVoidOperation } from '@/utils/firestoreErrorHandler';
 import { corrigirDiscursivasIA, DiscursivaCorrigir } from '@/utils/ia';
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useTheme } from '@react-navigation/native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { collection, doc, getDoc, onSnapshot, updateDoc } from 'firebase/firestore';
@@ -41,7 +42,13 @@ export default function CorrigirRespostas() {
   const [detalhe, setDetalhe] = useState<{questao:any,respostaAluno:any}|null>(null);
   const [iaLoading, setIaLoading] = useState(false);
   const [notasGerais, setNotasGerais] = useState<Record<string, number>>({});
-  const keyGoogle = process.env.EXPO_PUBLIC_GOOGLE_KEY || 'AIzaSyD8AUUxeuO9Df465lJmy0oBvvg7rRtlenA';
+  const [key_google, setKey_google] = useState<string>('');
+  useEffect(() => {
+    AsyncStorage.getItem('key_google').then(key_google => {
+      console.log(key_google);
+      setKey_google(key_google || '');
+    });
+  }, []);
 
   useEffect(() => {
     if (!params?.salaId) return;
@@ -76,18 +83,20 @@ export default function CorrigirRespostas() {
     }
     setQuestoes(qs);
     // inicializa notas
-    const init:Record<string,string> = {};
+    const initNotas:Record<string,string> = {};
+    const initCom:Record<string,string> = {};
     qs.forEach(q=>{
       const r = respData.respostas?.[q.id];
       if (typeof r==='object' && r.nota!==undefined){
-        init[q.id]=String(r.nota);
+        initNotas[q.id]=String(r.nota);
+        if(r.comentario) initCom[q.id]=String(r.comentario);
       } else if (typeof r === 'string' && q.tipo === 'discursiva') {
         // Para questões discursivas com resposta em string, inicializa com nota vazia
-        init[q.id] = '';
+        initNotas[q.id] = '';
       }
     });
-    setNotas(init);
-    setComentarios({});
+    setNotas(initNotas);
+    setComentarios(initCom);
     
     // Carrega a nota geral salva no banco ou calcula
     let notaGeral = respData.notaGeral;
@@ -122,21 +131,24 @@ export default function CorrigirRespostas() {
           respostasAtualizadas[questaoId] = {
             texto: respostaOriginal,
             nota: parseFloat(notas[questaoId]) || 0,
-            comentario: comentarios[questaoId] || ''
+            comentario: comentarios[questaoId] || '',
+            respostaCorreta: questoes.find(q => q.id === questaoId)?.respostaCorreta || ''
           };
         } else if (typeof respostaOriginal === 'object' && respostaOriginal !== null) {
           // Se já é um objeto, apenas adiciona os campos
           respostasAtualizadas[questaoId] = {
             ...respostaOriginal,
             nota: parseFloat(notas[questaoId]) || 0,
-            comentario: comentarios[questaoId] || ''
+            comentario: comentarios[questaoId] || '',
+            respostaCorreta: questoes.find(q => q.id === questaoId)?.respostaCorreta || ''
           };
         } else {
           // Caso não exista resposta, cria um objeto vazio
           respostasAtualizadas[questaoId] = {
             texto: '',
             nota: parseFloat(notas[questaoId]) || 0,
-            comentario: comentarios[questaoId] || ''
+            comentario: comentarios[questaoId] || '',
+            respostaCorreta: questoes.find(q => q.id === questaoId)?.respostaCorreta || ''
           };
         }
       });
@@ -632,9 +644,9 @@ export default function CorrigirRespostas() {
               style={[
               styles.fab,
               { backgroundColor: theme.dark ? '#9c27b0' : '#9c27b0' },
-              (!keyGoogle || saving || iaLoading) && styles.disabledButton
+              (!key_google || saving || iaLoading) && styles.disabledButton
             ]} 
-            disabled={!keyGoogle || saving || iaLoading} 
+            disabled={!key_google || saving || iaLoading} 
             onPress={async()=>{
               const disc:DiscursivaCorrigir[] = questoes.filter(q=>q.tipo==='discursiva').map(q=>({
                 id:q.id,
@@ -646,7 +658,7 @@ export default function CorrigirRespostas() {
               
               setIaLoading(true);
               try{
-                const res = await corrigirDiscursivasIA(disc,keyGoogle);
+                const res = await corrigirDiscursivasIA(disc,key_google);
                 const map:Record<string,string> = {};
                 const com:Record<string,string> = {};
                 res.forEach(r=>{map[r.id]=String(r.nota); if(r.comentario) com[r.id]=r.comentario;});

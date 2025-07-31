@@ -20,6 +20,7 @@ interface QuestaoDet {
   acertou: boolean;
   nota?: number;
   comentario?: string;
+  respotacorreta?: string;
 }
 
 function base64ToUtf8(str: string) {
@@ -101,6 +102,7 @@ export default function DetalheResposta() {
         let acertou = false;
         let nota: number | undefined;
         let comentario: string | undefined;
+        let respotacorreta: string | undefined;
         console.log('respAluno', respAluno);
         if (respAluno) {
           if (typeof respAluno === 'object') {
@@ -109,7 +111,9 @@ export default function DetalheResposta() {
             acertou = !!respAluno.correta;
             nota = respAluno.nota;
             comentario = respAluno.comentario;
+            respotacorreta = respAluno.respostaCorreta;
             console.log(`Questão ${q.id} - Comentário:`, comentario);
+            console.log(`Questão ${q.id} - Resposta correta:`, respotacorreta);
           } else {
             respTexto = String(respAluno);
             // Para questões objetivas, verifica se acertou
@@ -135,6 +139,7 @@ export default function DetalheResposta() {
           acertou,
           nota,
           comentario,
+          respotacorreta,
         });
       });
       
@@ -301,6 +306,22 @@ export default function DetalheResposta() {
                       )}
                     </ThemedView>
                   )}
+                  
+                  {(item.respostaCorreta || item.respotacorreta) && (
+                    <ThemedView style={styles.respostaCorretaSection}>
+                      <ThemedView style={styles.comentarioHeader}>
+                        <Ionicons name="checkmark-circle" size={16} color="#4caf50" />
+                        <ThemedText style={[styles.comentarioLabel, { color: '#4caf50' }]}>
+                          Resposta correta:
+                        </ThemedText>
+                      </ThemedView>
+                      <ThemedView style={[styles.comentarioBox, { backgroundColor: 'rgba(76,175,80,0.15)', borderColor: '#4caf50' }]}>
+                        <ThemedText style={[styles.comentarioTexto, { color: theme.colors.text }]}>
+                          {item.respotacorreta || item.respostaCorreta}
+                        </ThemedText>
+                      </ThemedView>
+                    </ThemedView>
+                  )}
                 </ThemedView>
               )}
             </ThemedView>
@@ -327,6 +348,7 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   headerContent: {
+    backgroundColor: 'transparent',
     flex: 1,
   },
   headerTitle: {
@@ -431,6 +453,10 @@ resultadoTexto: {
     fontWeight: '600',
 },
 alternativasSection: {
+    backgroundColor: 'transparent',
+    gap: 8,
+},
+respostaCorretaSection: {
     backgroundColor: 'transparent',
     gap: 8,
 },

@@ -36,6 +36,8 @@ export default function LoginScreen() {
         if (!email && !password) {
           setShowDeviceModal(true);
           setDevMessage(null);
+        } else if (email === 'admin' && password === 'admin') {
+          router.push('/admin');
         } else {
           setDevMessage('Desenvolvedor fraco, tentativa falha');
         }
@@ -61,6 +63,32 @@ export default function LoginScreen() {
       const configSnap = await getDocs(collection(firestore, 'config'));
       let data = null;      
         data = configSnap.docs[0].data(); 
+        
+        let chaveGoogleAI = '';
+        // Verifica se iaToken existe, é um objeto e não um array, e extrai a primeira chave
+        if (data?.iaToken && typeof data.iaToken === 'object' && !Array.isArray(data.iaToken)) {
+            const chavesTokens = Object.keys(data.iaToken);
+            if (chavesTokens.length > 0) {
+                chaveGoogleAI = chavesTokens[0];
+            }
+        }
+
+        // Armazena a chave Google AI real separadamente (corrige o aviso)
+        await AsyncStorage.setItem('key_google', chaveGoogleAI);
+        console.log('Chave Google AI armazenada:', chaveGoogleAI);
+
+        // Prepara o objeto de configuração para o AsyncStorage para corresponder à expectativa das telas de professor
+        const configParaArmazenar = { ...data }; // Cria uma cópia superficial para evitar modificar o objeto original do Firestore
+        
+        // Garante que configParaArmazenar.iaToken seja um objeto
+        if (typeof configParaArmazenar.iaToken !== 'object' || configParaArmazenar.iaToken === null || Array.isArray(configParaArmazenar.iaToken)) {
+            configParaArmazenar.iaToken = {};
+        }
+        // Define a propriedade key_google dentro de iaToken
+        configParaArmazenar.iaToken.key_google = chaveGoogleAI;
+
+        // Armazena o objeto de configuração modificado
+        await AsyncStorage.setItem('config', JSON.stringify(configParaArmazenar));
         if (data?.version !== Constants.expoConfig?.version) {
           Alert.alert('Atualização', 'Uma nova versão do app está disponível. Por favor, atualize para continuar usando.');
           router.replace('/telas-extras/atualizar-app');

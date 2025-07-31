@@ -13,6 +13,7 @@ import { Questao } from '@/types/avaliacao';
 import { salvarProva } from '@/utils/prova';
 import { useProvaStore } from '@/utils/provaStore';
 import { useTheme } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 function utf8ToBase64(str: string) {
   return require('base-64').encode(
@@ -56,9 +57,13 @@ export default function CriarAvaliacao() {
   const { 
     titulo, 
     descricao, 
+    materia,
+    tema,
     questoes, 
     setTitulo, 
     setDescricao, 
+    setMateria,
+    setTema,
     setQuestoes,
     addQuestao,
     updateQuestao,
@@ -66,7 +71,7 @@ export default function CriarAvaliacao() {
   } = useProvaStore();
 
   const [professor, setProfessor] = useState<any>(null);
-
+  const insets = useSafeAreaInsets();
   useEffect(() => {
     AsyncStorage.getItem('usuarioLogado').then(data => {
       if (data) {
@@ -86,6 +91,8 @@ export default function CriarAvaliacao() {
             const prova = JSON.parse(decrypted);
             setTitulo(prova.titulo);
             setDescricao(prova.descricao);
+            setMateria(prova.materia || '');
+            setTema(prova.tema || '');
             setQuestoes(prova.questoes);
           } catch (e) {
             Alert.alert('Erro', 'Não foi possível carregar a prova para edição.');
@@ -150,8 +157,8 @@ export default function CriarAvaliacao() {
       Alert.alert('Erro', 'Usuário não autenticado. Faça login novamente.');
       return;
     }
-    if (questoes.length === 0 || !titulo || !descricao) {
-      Alert.alert('Aviso', 'Adicione um título, uma descrição e pelo menos uma questão antes de publicar a avaliação.');
+    if (questoes.length === 0 || !titulo || !descricao || !materia || !tema) {
+      Alert.alert('Aviso', 'Preencha título, descrição, matéria, tema e adicione pelo menos uma questão antes de publicar a avaliação.');
       return;
     }
     setIsPublishing(true);
@@ -159,6 +166,8 @@ export default function CriarAvaliacao() {
       const prova = {
         titulo,
         descricao,
+        materia,
+        tema,
         questoes
       };
       if (params.id) {
@@ -201,25 +210,21 @@ export default function CriarAvaliacao() {
     );
   }
   const limparAvaliacao = () => {
-    Alert.alert(
-      'Confirmar limpeza',
-      'Tem certeza que deseja limpar a avaliação?',
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Limpar', style: 'destructive', onPress: () => {
     setTitulo('');
     setDescricao('');
+    setMateria('');
+    setTema('');
     setQuestoes([]);
-  }}]
-    );
   }
   const visualizarAvaliacao = () => {
     const prova = {
       titulo,
       descricao,
+      materia,
+      tema,
       questoes
     }
-    if (questoes.length > 0 && titulo && descricao) {
+    if (questoes.length > 0 && titulo && descricao && materia && tema) {
       router.push('/professor/visualizar-prova');
     } else {
       Alert.alert('Aviso', 'Adicione um título e uma descrição antes de visualizar a avaliação.');
@@ -251,6 +256,20 @@ export default function CriarAvaliacao() {
         onChangeText={setDescricao}
         style={[styles.input, { height: 80, color: theme.colors.text }]}
         multiline
+      />
+      <TextInput
+        placeholder="Matéria (ex: Matemática, História)"
+        placeholderTextColor="#888"
+        value={materia}
+        onChangeText={setMateria}
+        style={[styles.input, { color: theme.colors.text }]}
+      />
+      <TextInput
+        placeholder="Tema específico (ex: Equações do 1º grau)"
+        placeholderTextColor="#888"
+        value={tema}
+        onChangeText={setTema}
+        style={[styles.input, { color: theme.colors.text }]}
       />
 
       <ThemedText style={{ marginTop: 12 }}>Questões</ThemedText>
@@ -658,12 +677,21 @@ export default function CriarAvaliacao() {
           { bottom: 230},
           { backgroundColor: theme.dark ? '#9c27b0' : '#9c27b0' }
         ]} 
-        onPress={() => router.push('/professor/gerar-questoes-ia')}
+        onPress={() => {
+          if (!materia || !tema) {
+            Alert.alert('Aviso', 'Preencha matéria e tema antes de gerar questões com IA.');
+            return;
+          }
+          router.push({
+            pathname: '/professor/gerar-questoes-ia',
+            params: { materia, tema }
+          });
+        }}
       >
         <Ionicons name="sparkles" size={20} color="#fff"/>
       </Pressable>
 
-      <ThemedView style={styles.buttonContainer}>
+      <ThemedView style={[styles.buttonContainer, { marginBottom: insets.bottom }]}>
         <Pressable 
           style={[
             styles.secondaryButton, 
