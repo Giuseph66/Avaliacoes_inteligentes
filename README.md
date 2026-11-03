@@ -138,5 +138,3 @@ const firebaseConfig = {
 
 ## Licença
 Distribuído sob a licença MIT. Veja `LICENSE` para mais informações.
-# Avaliacoes_inteligentes
-# Avaliacoes_inteligentes
